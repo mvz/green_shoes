@@ -2,8 +2,9 @@ require 'tmpdir'
 require 'pathname'
 require 'gir_ffi'
 
-GirFFI.setup :Gtk
 GirFFI.setup :Gdk
+GirFFI.setup :GdkPixbuf
+GirFFI.setup :Gtk
 Gtk.init
 
 Types = module Shoes; self end
