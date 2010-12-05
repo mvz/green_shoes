@@ -52,9 +52,10 @@ class Shoes
       mouse_motion_control app
     end
 
-    app.canvas = Gtk::Layout.new
+    # FIXME: #new should allow arguments to be left out (allow-null).
+    app.canvas = Gtk::Layout.new nil, nil
     win.add app.canvas
-    app.canvas.style = style
+    app.canvas.set_style style
     app.win = win
 
     app.instance_eval &blk if blk
