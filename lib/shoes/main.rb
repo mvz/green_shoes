@@ -31,24 +31,24 @@ class Shoes
     # FIXME: A less verbose interface would be preferable.
     win.set_events Gdk::EventMask[:button_press_mask] | Gdk::EventMask[:button_release_mask] | Gdk::EventMask[:pointer_motion_mask]
 
-    win.signal_connect("delete-event") do
+    GObject.signal_connect(win, "delete-event") do
       false
     end
 
-    win.signal_connect "destroy" do
+    GObject.signal_connect win, "destroy" do
       Gtk.main_quit
       File.delete TMP_PNG_FILE if File.exist? TMP_PNG_FILE
     end if @apps.size == 1
 
-    win.signal_connect("button_press_event") do
+    GObject.signal_connect(win, "button-press-event") do
       mouse_click_control app
     end
     
-    win.signal_connect("button_release_event") do
+    GObject.signal_connect(win, "button-release-event") do
       mouse_release_control app
     end
 
-    win.signal_connect("motion_notify_event") do
+    GObject.signal_connect(win, "motion-notify-event") do
       mouse_motion_control app
     end
 
