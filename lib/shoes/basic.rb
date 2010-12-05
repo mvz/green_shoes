@@ -13,7 +13,7 @@ class Shoes
         attr_accessor *args.keys
       end
 
-      (@width, @height = @real.size_request) if @real
+      (@width, @height = @real.get_size_request) if @real
       @proc = nil
       [:app, :real].each{|k| args.delete k}
       @args = args

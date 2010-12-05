@@ -12,7 +12,7 @@ class Shoes
 
     def create_tmp_png surface
       surface.write_to_png TMP_PNG_FILE
-      Gtk::Image.new TMP_PNG_FILE
+      Gtk::Image.new_from_file TMP_PNG_FILE
     end
   end
 

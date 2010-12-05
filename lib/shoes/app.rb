@@ -55,7 +55,7 @@ class Shoes
 
     def image name, args={}
       args = basic_attributes args
-      img = Gtk::Image.new name
+      img = Gtk::Image.new_from_file name
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
@@ -64,8 +64,8 @@ class Shoes
 
     def button name, args={}, &blk
       args = basic_attributes args
-      b = Gtk::Button.new name
-      b.signal_connect "clicked", &blk if blk
+      b = Gtk::Button.new_with_label name
+      GObject.signal_connect b, "clicked", &blk if blk
       @canvas.put b, args[:left], args[:top]
       b.show_now
       args[:real], args[:text], args[:app] = b, name, self
@@ -76,7 +76,7 @@ class Shoes
       args = basic_attributes args
       el = Gtk::Entry.new
       el.text = args[:text].to_s
-      el.signal_connect "changed" do
+      GObject.signal_connect el, "changed" do
         yield el
       end if block_given?
       @canvas.put el, args[:left], args[:top]

@@ -24,8 +24,8 @@ class Shoes
     #style.set_bg :normal, 65535, 65535, 65535
 
     class << app; self end.class_eval do
-      define_method(:width){win.size[0]}
-      define_method(:height){win.size[1]}
+      define_method(:width){win.get_size[0]}
+      define_method(:height){win.get_size[1]}
     end
 
     # FIXME: A less verbose interface would be preferable.
@@ -60,14 +60,15 @@ class Shoes
 
     app.instance_eval &blk if blk
 
-    Gtk.timeout_add 100 do
+    # TODO: Have gir_ffi autocreate block arguments.
+    Gtk.timeout_add 100, (Proc.new do
       if size_allocated? app
         call_back_procs app
         app.width_pre, app.height_pre = app.width, app.height
       end
       set_cursor_type app
       true
-    end
+    end), nil
 
     call_back_procs app
     
