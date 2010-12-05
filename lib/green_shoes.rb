@@ -1,6 +1,8 @@
 require 'tmpdir'
 require 'pathname'
 require 'gir_ffi'
+require 'cairo'
+require 'pango'
 
 GirFFI.setup :Gdk
 GirFFI.setup :GdkPixbuf
