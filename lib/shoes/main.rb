@@ -16,18 +16,20 @@ class Shoes
 
     win = Gtk::Window.new :toplevel
     win.set_icon(GdkPixbuf::Pixbuf.new_from_file File.join(DIR, '../static/gshoes-icon.png'))
-    win.title = args[:title]
+    win.set_title args[:title]
     win.set_default_size args[:width], args[:height]
 
-    style = win.style
-    style.set_bg Gtk::STATE_NORMAL, 65535, 65535, 65535
+    style = win.get_style
+    # FIXME: No equivalent in GirFFI yet.
+    #style.set_bg :normal, 65535, 65535, 65535
 
     class << app; self end.class_eval do
       define_method(:width){win.size[0]}
       define_method(:height){win.size[1]}
     end
 
-    win.set_events Gdk::Event::BUTTON_PRESS_MASK | Gdk::Event::BUTTON_RELEASE_MASK | Gdk::Event::POINTER_MOTION_MASK
+    # FIXME: A less verbose interface would be preferable.
+    win.set_events Gdk::EventMask[:button_press_mask] | Gdk::EventMask[:button_release_mask] | Gdk::EventMask[:pointer_motion_mask]
 
     win.signal_connect("delete-event") do
       false
