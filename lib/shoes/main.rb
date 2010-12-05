@@ -40,15 +40,21 @@ class Shoes
       File.delete TMP_PNG_FILE if File.exist? TMP_PNG_FILE
     end if @apps.size == 1
 
-    GObject.signal_connect(win, "button-press-event") do
+    GObject.signal_connect(win, "button-press-event") do |w, e|
+      app.mouse_button = e.button
+      app.mouse_pos = app.win.pointer
       mouse_click_control app
+      mouse_link_control app
     end
     
     GObject.signal_connect(win, "button-release-event") do
+      app.mouse_button = 0
+      app.mouse_pos = app.win.pointer
       mouse_release_control app
     end
 
     GObject.signal_connect(win, "motion-notify-event") do
+      app.mouse_pos = app.win.pointer
       mouse_motion_control app
     end
 
@@ -66,6 +72,7 @@ class Shoes
         call_back_procs app
         app.width_pre, app.height_pre = app.width, app.height
       end
+      show_hide_control app
       set_cursor_type app
       true
     end), nil
