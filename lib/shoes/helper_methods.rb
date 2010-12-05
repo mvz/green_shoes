@@ -42,7 +42,12 @@ class Shoes
   def self.repaint_all_by_order app
     app.order.each do |e|
       if e.real and !e.is_a?(Background)
+	before_type = GObject.type_from_instance(e.real)
         app.canvas.remove e.real
+	after_type = GObject.type_from_instance(e.real)
+	if before_type != after_type
+	  raise "Type change: (#{GObject.type_name(before_type)}) -> (#{GObject.type_name(after_type)})"
+	end
         app.canvas.put e.real, e.left, e.top
       end
     end
@@ -88,13 +93,13 @@ class Shoes
   
   def self.set_cursor_type app
     app.mccs.each do |e|
-      e.real.window.cursor = ARROW if e.real.window
-      (e.real.window.cursor = HAND; break) if mouse_on? e
+      e.real.get_window.set_cursor ARROW if e.real.get_window
+      (e.real.get_window.set_cursor HAND; break) if mouse_on? e
     end
   end
   
   def self.mouse_on? e
-    mouse_x, mouse_y = e.real.pointer
+    mouse_x, mouse_y = e.real.get_pointer
     (0..e.width).include?(mouse_x) and (0..e.height).include?(mouse_y)
   end
 

@@ -46,6 +46,7 @@ class Shoes
       context.show_page
 
       img = create_tmp_png surface
+      img.ref # FIXME
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
@@ -56,6 +57,7 @@ class Shoes
     def image name, args={}
       args = basic_attributes args
       img = Gtk::Image.new_from_file name
+      img.ref # FIXME
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
@@ -66,6 +68,7 @@ class Shoes
       args = basic_attributes args
       b = Gtk::Button.new_with_label name
       GObject.signal_connect b, "clicked", &blk if blk
+      b.ref # FIXME
       @canvas.put b, args[:left], args[:top]
       b.show_now
       args[:real], args[:text], args[:app] = b, name, self
@@ -79,6 +82,7 @@ class Shoes
       GObject.signal_connect el, "changed" do
         yield el
       end if block_given?
+      el.ref # FIXME
       @canvas.put el, args[:left], args[:top]
       el.show_now
       args[:real], args[:app] = el, self
@@ -124,6 +128,7 @@ class Shoes
       context.stroke
 
       img = create_tmp_png surface
+      img.ref # FIXME
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
@@ -154,6 +159,7 @@ class Shoes
       context.fill
       
       img = create_tmp_png surface
+      img.ref # FIXME
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
@@ -186,6 +192,7 @@ class Shoes
         context.set_source_rgba *(pat)
         context.fill
         img = create_tmp_png surface
+	img.ref # FIXME
         @canvas.put img, args[:left], args[:top]
         img.show_now
         args[:real] = img
