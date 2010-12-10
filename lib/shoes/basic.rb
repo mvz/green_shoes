@@ -21,7 +21,6 @@ class Shoes
       @width += (@margin_left + @margin_right)
       @height += (@margin_top + @margin_bottom)
 
->>>>>>> master
       @proc = nil
       [:app, :real].each{|k| args.delete k}
       @args = args
