@@ -141,9 +141,9 @@ class Shoes
     
     app.mlcs.each do |tb|
       tb.text = tb.text unless tb.real
-      tb.real.window.cursor = ARROW if tb.real.window
+      tb.real.get_window.set_cursor ARROW if tb.real.get_window
       if ret = mouse_on_link(tb, app)
-        tb.real.window.cursor = HAND
+        tb.real.get_window.set_cursor HAND
         unless tb.links[ret[1]].link_hover
           markup = tb.args[:markup].gsub(LINKHOVER_DEFAULT, LINK_DEFAULT)
           links = markup.mindex  LINK_DEFAULT
@@ -167,7 +167,7 @@ class Shoes
   end
 
   def self.mouse_on_link tb, app
-    mouse_x, mouse_y = app.win.pointer
+    mouse_x, mouse_y = app.win.get_pointer
     mouse_x -= tb.left
     mouse_y -= tb.top
     tb.links.each_with_index do |e, n|

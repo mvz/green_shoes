@@ -68,7 +68,7 @@ class Shoes
 
     app.instance_eval &blk if blk
 
-    # TODO: Have gir_ffi autocreate block arguments.
+    # FIXME: Have gir_ffi autocreate block arguments.
     Gtk.timeout_add 100, (Proc.new do
       if size_allocated? app
         call_back_procs app
