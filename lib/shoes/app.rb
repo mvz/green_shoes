@@ -131,8 +131,9 @@ class Shoes
       args = basic_attributes args
       args[:width] = 200 if args[:width].zero?
       el = Gtk::Entry.new
-      el.text = args[:text].to_s
-      el.width_chars = args[:width] / 6
+      el.set_text args[:text].to_s
+      el.set_width_chars args[:width] / 6
+      # FIXME: Signal defined on interface!
       GObject.signal_connect el, "changed" do
         yield el
         el.set_focus self
