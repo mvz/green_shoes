@@ -16,6 +16,7 @@ module Shoes
   TMP_PNG_FILE = File.join(Dir.tmpdir, '__green_shoes_temporary_file__')
   HAND = Gdk::Cursor.new(:hand1)
   ARROW = Gdk::Cursor.new(:arrow)
+  # FIXME: Must get #pango_context method somehow.
   FONTS = [] #Gtk::Invisible.new.pango_context.families.map(&:name).sort
   LINK_DEFAULT = "<span underline='single' underline_color='#06E' foreground='#06E'>"
   LINKHOVER_DEFAULT = "<span underline='single' underline_color='#039' foreground='#039'>"
