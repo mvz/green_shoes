@@ -41,9 +41,8 @@ class Shoes
     end if @apps.size == 1
 
     GObject.signal_connect(win, "button-press-event") do |w, e|
-      # FIXME: Autocast, plus need to support unions.
-      # e = Gdk::Event.send :_real_new, e
-      # app.mouse_button = e.button
+      # FIXME: Perhaps make e already be a Gdk::EventButton.
+      app.mouse_button = e[:button][:button]
       app.mouse_pos = app.win.get_pointer
       mouse_click_control app
       mouse_link_control app
