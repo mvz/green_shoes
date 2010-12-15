@@ -15,7 +15,12 @@ class Shoes
         attr_accessor *args.keys
       end
 
-      (@width, @height = @real.get_size_request) if @real and !self.is_a?(TextBlock)
+      # FIXME: size_request is a bit bizarre. Override?
+      if @real and !self.is_a?(TextBlock)
+	r = Gtk::Requisition.new
+	@real.size_request r
+	@width, @height = r[:width], r[:height]
+      end
 
       set_margin
       @width += (@margin_left + @margin_right)
