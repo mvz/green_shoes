@@ -130,7 +130,7 @@ class Shoes
         w, h = imagesize(name)
         args[:width] = w if args[:width].zero?
         args[:height] = w if args[:height].zero?
-        img = Gtk::Image.new img.pixbuf.scale(args[:width], args[:height])
+        img = Gtk::Image.new_from_pixbuf img.get_pixbuf.scale_simple(args[:width], args[:height], :hyper)
       end
       @canvas.put img, args[:left], args[:top]
       img.show_now
@@ -236,8 +236,8 @@ class Shoes
     end
 
     def keypress &blk
-      win.set_events Gdk::Event::BUTTON_PRESS_MASK | Gdk::Event::BUTTON_RELEASE_MASK | Gdk::Event::POINTER_MOTION_MASK | Gdk::Event::KEY_PRESS_MASK
-      win.signal_connect("key_press_event") do |w, e|
+      win.set_events Gdk::EventMask[:button_press_mask] | Gdk::EventMask[:button_release_mask] | Gdk::EventMask[:pointer_motion_mask] | Gdk::EventMask[:key_press_mask]
+      GObject.signal_connect(win, "key-press-event") do |w, e|
         blk[Gdk::Keyval.to_name(e.keyval)]
       end
     end
@@ -323,7 +323,7 @@ class Shoes
       context.stroke
       
       img = create_tmp_png surface
-      img = Gtk::Image.new img.pixbuf.rotate(ROTATE[@pixbuf_rotate])
+      img = Gtk::Image.new_from_pixbuf img.get_pixbuf.rotate_simple(ROTATE[@pixbuf_rotate])
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
@@ -417,7 +417,7 @@ class Shoes
       context.stroke
       
       img = create_tmp_png surface
-      img = Gtk::Image.new img.pixbuf.rotate(ROTATE[@pixbuf_rotate])
+      img = Gtk::Image.new_from_pixbuf img.get_pixbuf.rotate_simple(ROTATE[@pixbuf_rotate])
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self

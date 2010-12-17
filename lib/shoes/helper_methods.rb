@@ -152,7 +152,7 @@ class Shoes
 
   def self.mouse_motion_control app
     app.mmcs.each do |blk|
-      blk[*app.win.pointer]
+      blk[*app.win.get_pointer]
     end
   end
 
@@ -238,7 +238,7 @@ class Shoes
         m.parent.contents.each do |ele|
           x, y = ele.left - m.parent.left, ele.top - m.parent.top
           context.translate x, y
-          context.set_source_pixbuf ele.real.pixbuf
+          context.set_source_pixbuf ele.real.get_pixbuf
           context.paint
           context.translate -x, -y
         end
@@ -254,7 +254,7 @@ class Shoes
           end
           x, y = ele.left - m.parent.left, ele.top - m.parent.top
           ct.translate x, y
-          ct.set_source_pixbuf ele.real.pixbuf
+          ct.set_source_pixbuf ele.real.get_pixbuf
           ct.paint
           ct.translate -x, -y
         end
