@@ -161,10 +161,9 @@ class Shoes
       el = Gtk::Entry.new
       el.set_text args[:text].to_s
       el.set_width_chars args[:width] / 6
-      # FIXME: Signal defined on interface!
       GObject.signal_connect el, "changed" do
         yield el
-        el.set_focus self
+        self.win.set_focus el
       end if block_given?
       @canvas.put el, args[:left], args[:top]
       el.show_now

@@ -189,7 +189,7 @@ class Shoes
 
   class EditLine < Basic
     def text
-      @real.text
+      @real.get_text
     end
 
     def move2 x, y
