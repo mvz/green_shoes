@@ -211,7 +211,7 @@ class Shoes
   
   class ListBox < Basic
     def text
-      @items[@real.active]
+      @items[@real.get_active]
     end
   end
 end

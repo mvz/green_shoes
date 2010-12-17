@@ -139,7 +139,10 @@ class Shoes
     end
 
     def imagesize name
-      Gtk::Image.new(name).size_request
+      # FIXME: size_request is a bit bizarre. Override?
+      r = Gtk::Requisition.new
+      Gtk::Image.new_from_file(name).size_request r
+      [r[:width], r[:height]]
     end
 
     def button name, args={}, &blk
@@ -198,8 +201,8 @@ class Shoes
       cb = Gtk::ComboBox.new
       args[:items] ||= []
       args[:items].each{|item| cb.append_text item.to_s}
-      cb.active = args[:items].index(args[:choose]) if args[:choose]
-      cb.signal_connect("changed") do
+      cb.set_active args[:items].index(args[:choose]) if args[:choose]
+      GObject.signal_connect(cb, "changed") do
         blk.call args[:items][cb.active]
       end if blk
       @canvas.put cb, args[:left], args[:top]
@@ -238,7 +241,7 @@ class Shoes
     def keypress &blk
       win.set_events Gdk::EventMask[:button_press_mask] | Gdk::EventMask[:button_release_mask] | Gdk::EventMask[:pointer_motion_mask] | Gdk::EventMask[:key_press_mask]
       GObject.signal_connect(win, "key-press-event") do |w, e|
-        blk[Gdk::Keyval.to_name(e.keyval)]
+        blk[Gdk.keyval_name(e[:key][:keyval])]
       end
     end
 
