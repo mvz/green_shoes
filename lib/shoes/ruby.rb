@@ -7,14 +7,19 @@ end
 
 class Object
   def alert msg
-    dialog = Gtk::MessageDialog.new(
-      app.win,
-      Gtk::Dialog::MODAL,
-      Gtk::MessageDialog::INFO,
-      Gtk::MessageDialog::BUTTONS_OK,
-      msg
-    )
-    dialog.title = "Shoes says:"
+    # FIXME: Gtk::MessageDialog has no introspectable constructors.
+    #dialog = Gtk::MessageDialog.new(app.win, :modal, :info, :buttons_ok, msg)
+    dialog = Gtk::Dialog.new
+    dialog.set_transient_for app.win
+    dialog.set_modal true
+    dialog.add_button "gtk-ok", Gtk::ResponseType[:ok]
+    # FIXME: Dynamically get class of returned widgets.
+    area = Gtk::VBox.send :_real_new, dialog.get_content_area.to_ptr
+    area.add Gtk::Label.new(msg)
+
+    dialog.set_title "Shoes says:"
+    dialog.show_all
+
     dialog.run
     dialog.destroy
   end
