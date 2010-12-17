@@ -20,7 +20,7 @@ module Shoes
   FONTS = [] #Gtk::Invisible.new.pango_context.families.map(&:name).sort
   LINK_DEFAULT = "<span underline='single' underline_color='#06E' foreground='#06E' weight='normal'>"
   LINKHOVER_DEFAULT = "<span underline='single' underline_color='#039' foreground='#039' weight='normal'>"
-  ROTATE = [GdkPixbuf::PixbufRotation[:none], GdkPixbuf::PixbufRotation[:clockwise], GdkPixbuf::PixbufRotation[:upsidedown], GdkPixbuf::PixbufRotation[:counterclockwise]]
+  ROTATE = [:none, :clockwise, :upsidedown, :counterclockwise]
 end
 
 class Object
