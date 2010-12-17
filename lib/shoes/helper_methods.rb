@@ -12,6 +12,32 @@ class Shoes
 
     attr_reader :margin_left, :margin_top, :margin_right, :margin_bottom
   end
+  
+  module Mod2
+    def init_app_vars
+      @contents, @mccs, @mrcs, @mmcs, @mlcs, @shcs, @mcs, @order = 
+        [], [], [], [], [], [], [], []
+      @cmask = nil
+      @mouse_button, @mouse_pos = 0, [0, 0]
+      @fill, @stroke = black, black
+    end
+
+    def set_rotate_angle args
+      @context_angle2 = Math::PI/2 - @context_angle
+      m = args[:height] * Math.sin(@context_angle)
+      w = args[:width] * Math.sin(@context_angle2) + m
+      h = args[:width] * Math.sin(@context_angle) + args[:height] * Math.sin(@context_angle2)
+      mx, my = m * Math.sin(@context_angle2), m * Math.sin(@context_angle)
+      if @pixbuf_rotate.even?
+        args[:left] += (args[:width] - w)/2.0
+        args[:top] -= (h - args[:height])/2.0
+      else
+        args[:left] -= (h - args[:width])/2.0
+        args[:top] += (args[:height] - w)/2.0
+      end
+      return w, h, mx, my
+    end
+  end
 
   class App
     def basic_attributes args={}
@@ -57,6 +83,10 @@ class Shoes
     slot.contents.each do |ele|
       if ele.is_a? ShapeBase
         ele.hide if slot.masked
+        next
+      end
+      if slot.masked and ele.is_a? Image
+        ele.hide
         next
       end
       tmp = max
@@ -145,17 +175,17 @@ class Shoes
       if ret = mouse_on_link(tb, app)
         tb.real.get_window.set_cursor HAND
         unless tb.links[ret[1]].link_hover
-          markup = tb.args[:markup].gsub(LINKHOVER_DEFAULT, LINK_DEFAULT)
-          links = markup.mindex  LINK_DEFAULT
+          markup = tb.args[:markup].gsub(app.linkhover_style, app.link_style)
+          links = markup.mindex  app.link_style
           n = links[ret[1]]
-          tb.text = markup[0...n] + markup[n..-1].sub(LINK_DEFAULT, LINKHOVER_DEFAULT)
+          tb.text = markup[0...n] + markup[n..-1].sub(app.link_style, app.linkhover_style)
           tb.links.each{|e| e.link_hover = false}
           tb.links[ret[1]].link_hover = true
         end
         return
       end
       if tb.links.map(&:link_hover).include? true
-        tb.text = tb.args[:markup].gsub(LINKHOVER_DEFAULT, LINK_DEFAULT)
+        tb.text = tb.args[:markup].gsub(app.linkhover_style, app.link_style)
         tb.links.each{|e| e.link_hover = false}
       end
     end

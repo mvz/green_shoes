@@ -1,28 +1,37 @@
 class Shoes
   class App
     include Types
+    include Mod2
 
     def initialize args={}
       args.each do |k, v|
         instance_variable_set "@#{k}", v
       end
+      
       App.class_eval do
         attr_accessor *(args.keys - [:width, :height, :title])
       end
-      @contents, @canvas, @mccs, @mrcs, @mmcs, @mlcs, @shcs, @mcs, @win, @order = 
-        [], nil, [], [], [], [], [], [], nil, []
+      
+      init_app_vars
+      @canvas, @win = nil, nil
       @cslot = (@app ||= self)
-      @cmask = nil
       @top_slot = nil
       @width_pre, @height_pre = @width, @height
-      @mouse_button, @mouse_pos = 0, [0, 0]
-      @fill, @stroke = black, black
+      @link_style, @linkhover_style = LINK_DEFAULT, LINKHOVER_DEFAULT
+      @context_angle = @pixbuf_rotate = 0
     end
 
     attr_accessor :cslot, :cmask, :top_slot, :contents, :canvas, :app, :mccs, :mrcs, :mmcs, 
       :mlcs, :shcs, :mcs, :win, :width_pre, :height_pre, :order
     attr_writer :mouse_button, :mouse_pos
+    attr_reader :link_style, :linkhover_style
 
+    def visit url
+      $urls.each do |k, v|
+        clear{init_app_vars; v.call self, $1} if k =~ url
+      end
+    end
+    
     def stack args={}, &blk
       args[:app] = self
       Stack.new slot_attributes(args), &blk
@@ -34,21 +43,37 @@ class Shoes
     end
 
     def mask &blk
-      @mcs << Mask.new(self, &blk)
+      Mask.new(self, &blk).tap{|m| @mcs << m}
     end
 
     def clear &blk
       @top_slot.clear &blk
     end
 
+    def style klass, args={}
+      if klass == Shoes::Link
+          @link_style = LINK_DEFAULT
+          @link_style.sub!('single', 'none') if args[:underline] == false
+          @link_style.sub!("foreground='#06E'", "foreground='#{args[:stroke]}'") if args[:stroke]
+          @link_style.sub!('>', " background='#{args[:fill]}'>") if args[:fill]
+          @link_style.sub!('normal', "#{args[:weight]}") if args[:weight]
+      elsif klass == Shoes::LinkHover
+          @linkhover_style = LINKHOVER_DEFAULT
+          @linkhover_style.sub!('single', 'none') if args[:underline] == false
+          @linkhover_style.sub!("foreground='#039'", "foreground='#{args[:stroke]}'") if args[:stroke]
+          @linkhover_style.sub!('>', " background='#{args[:fill]}'>") if args[:fill]
+          @linkhover_style.sub!('normal', "#{args[:weight]}") if args[:weight]
+      end
+    end
+
     def textblock klass, font_size, *msg
-      line_height =  font_size * 2
       args = msg.last.class == Hash ? msg.pop : {}
       args = basic_attributes args
       args[:markup] = msg.map(&:to_s).join
       attr_list, text = Pango.parse_markup args[:markup]
       args[:size] ||= font_size
       args[:align] ||= 'left'
+      line_height =  args[:size] * 2
       
       args[:links] = make_link_index(msg) unless args[:links]
 
@@ -69,7 +94,7 @@ class Shoes
         layout.text = text
         layout.alignment = eval "Pango::ALIGN_#{args[:align].upcase}"
         fd = Pango::FontDescription.new 'sans'
-        fd.size = font_size * Pango::SCALE
+        fd.size = args[:size] * Pango::SCALE
         layout.font_description = fd
         layout.attributes = attr_list
         context.show_pango_layout layout
@@ -143,6 +168,29 @@ class Shoes
       args[:real], args[:app] = el, self
       EditLine.new args
     end
+
+    def edit_box args={}
+      args = basic_attributes args
+      args[:width] = 200 if args[:width].zero?
+      args[:height] = 200 if args[:height].zero?
+      tv = Gtk::TextView.new
+      tv.wrap_mode = Gtk::TextTag::WRAP_WORD
+
+      eb = Gtk::ScrolledWindow.new
+      eb.set_size_request args[:width], args[:height]
+      eb.set_policy Gtk::POLICY_NEVER, Gtk::POLICY_AUTOMATIC
+      eb.set_shadow_type Gtk::SHADOW_IN
+      eb.add tv
+
+      tv.buffer.signal_connect "changed" do
+        yield tv.buffer
+      end if block_given?
+
+      @canvas.put eb, args[:left], args[:top]
+      eb.show_now
+      args[:real], args[:app], args[:textview] = eb, self, tv
+      EditBox.new args
+    end
     
     def list_box args={}, &blk
       args = basic_attributes args
@@ -210,15 +258,19 @@ class Shoes
       args[:width].zero? ? (args[:width] = args[:radius] * 2) : (args[:radius] = args[:width]/2.0)
       args[:height] = args[:width] if args[:height].zero?
       args[:strokewidth] = ( args[:strokewidth] or strokewidth or 1 )
+
+      w, h, mx, my = set_rotate_angle(args)
+      my *= args[:width]/args[:height].to_f
       
-      surface = Cairo::ImageSurface.new Cairo::FORMAT_ARGB32, args[:width], args[:height]
+      surface = Cairo::ImageSurface.new Cairo::FORMAT_ARGB32, w, h
       context = Cairo::Context.new surface
+      context.rotate @context_angle
       context.scale(1,  args[:height]/args[:width].to_f)
       
       if pat = (args[:fill] or fill)
         gp = gradient pat, args[:width], args[:height], args[:angle]
         context.set_source gp
-        context.arc args[:radius], args[:radius], args[:radius], 0, 2*Math::PI
+        context.arc args[:radius]+mx, args[:radius]-my, args[:radius], 0, 2*Math::PI
         context.fill
       end
       
@@ -226,10 +278,11 @@ class Shoes
       gp = gradient pat, args[:width], args[:height], args[:angle]
       context.set_source gp
       context.set_line_width args[:strokewidth]
-      context.arc args[:radius], args[:radius], args[:radius]-args[:strokewidth]/2.0, 0, 2*Math::PI
+      context.arc args[:radius]+mx, args[:radius]-my, args[:radius]-args[:strokewidth]/2.0, 0, 2*Math::PI
       context.stroke
 
       img = create_tmp_png surface
+      img = Gtk::Image.new img.pixbuf.rotate(ROTATE[@pixbuf_rotate])
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
@@ -246,15 +299,19 @@ class Shoes
       end
       args[:height] = args[:width] unless args[:height]
       sw = args[:strokewidth] = ( args[:strokewidth] or strokewidth or 1 )
-      
+
+      w, h, mx, my = set_rotate_angle(args)
+
       args = basic_attributes args
-      surface = Cairo::ImageSurface.new Cairo::FORMAT_ARGB32, args[:width], args[:height]
+      surface = Cairo::ImageSurface.new Cairo::FORMAT_ARGB32, w, h
       context = Cairo::Context.new surface
+
+      context.rotate @context_angle
       
       if pat = (args[:fill] or fill)
         gp = gradient pat, args[:width], args[:height], args[:angle]
         context.set_source gp
-        context.rounded_rectangle 0, 0, args[:width], args[:height], args[:curve]
+        context.rounded_rectangle mx, -my, args[:width], args[:height], args[:curve]
         context.fill
       end
       
@@ -262,10 +319,11 @@ class Shoes
       gp = gradient pat, args[:width], args[:height], args[:angle]
       context.set_source gp
       context.set_line_width sw
-      context.rounded_rectangle sw/2.0, sw/2.0, args[:width]-sw, args[:height]-sw, args[:curve]
+      context.rounded_rectangle sw/2.0+mx, sw/2.0-my, args[:width]-sw, args[:height]-sw, args[:curve]
       context.stroke
       
       img = create_tmp_png surface
+      img = Gtk::Image.new img.pixbuf.rotate(ROTATE[@pixbuf_rotate])
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
@@ -332,17 +390,22 @@ class Shoes
       blk = args[:block]
       args[:width] ||= 300
       args[:height] ||= 300
+
+      w, h, mx, my = set_rotate_angle(args)
+
       args = basic_attributes args
-      surface = Cairo::ImageSurface.new Cairo::FORMAT_ARGB32, args[:width], args[:height]
+      surface = Cairo::ImageSurface.new Cairo::FORMAT_ARGB32, w, h
       context = Cairo::Context.new surface
       args[:strokewidth] = ( args[:strokewidth] or strokewidth or 1 )
       context.set_line_width args[:strokewidth]
+
+      context.rotate @context_angle
       
       mk_path = proc do |pat|
         gp = gradient pat, args[:width], args[:height], args[:angle]
         context.set_source gp
         context.move_to 0, 0
-        context.instance_eval &blk
+        klass == Shoes::Star ? context.instance_eval{blk[self, mx, -my]} : context.instance_eval(&blk)
       end
 
       if pat = (args[:fill] or fill)
@@ -354,6 +417,7 @@ class Shoes
       context.stroke
       
       img = create_tmp_png surface
+      img = Gtk::Image.new img.pixbuf.rotate(ROTATE[@pixbuf_rotate])
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
@@ -376,15 +440,23 @@ class Shoes
       args[:width] = args[:height] = args[:outer]*2.0
       x = y = outer = args[:outer]
       points, inner = args[:points], args[:inner]
-      args[:block] = proc do
-        move_to x, y + outer
+
+      args[:block] = proc do |s, mx, my|
+        x += mx; y += my
+        s.move_to x, y + outer
         (1..points*2).each do |i|
           angle =  i * Math::PI / points
           r = (i % 2 == 0) ? outer : inner
-          line_to x + r * Math.sin(angle), y + r * Math.cos(angle)
+          s.line_to x + r * Math.sin(angle), y + r * Math.cos(angle)
         end
       end
       shapebase Star, args
+    end
+
+    def rotate angle
+      @pixbuf_rotate, angle = angle.divmod(90)
+      @pixbuf_rotate %= 4
+      @context_angle = Math::PI * angle / 180
     end
 
     def rgb r, g, b, l=1.0

@@ -81,7 +81,12 @@ class Shoes
 
     def clear
       @app.mccs.delete(self); @app.mrcs.delete(self); @app.mmcs.delete(self)
-      @real.clear
+      case self
+        when Button, EditLine, EditBox, ListBox
+          @app.cslot.contents.delete self
+          remove
+        else @real.clear
+      end
     end
 
     def positioning x, y, max
@@ -185,6 +190,17 @@ class Shoes
   class EditLine < Basic
     def text
       @real.text
+    end
+
+    def move2 x, y
+      @app.canvas.move @real, x, y
+      move3 x, y
+    end
+  end
+
+  class EditBox < Basic
+    def text
+      @textview.buffer.text
     end
 
     def move2 x, y

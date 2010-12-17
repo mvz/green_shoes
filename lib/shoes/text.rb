@@ -16,7 +16,7 @@ class Shoes
     end
 
     def link str, &blk
-      Link.new @app, "#{LINK_DEFAULT}#{str}</span>", &blk
+      Link.new "#{LINK_DEFAULT}#{str}</span>", &blk
     end
   end
 
@@ -28,12 +28,13 @@ class Shoes
   end
 
   class Link < Text
-    def initialize app, str, &blk
+    def initialize str, &blk
       @link_proc, @pos, @index, @link_hover = blk, nil, nil, false
       super str
     end
     attr_reader :link_proc
     attr_accessor :pos, :index, :link_hover
   end
-  
+
+  class LinkHover < Text; end
 end

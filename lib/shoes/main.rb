@@ -1,6 +1,7 @@
 class Shoes
   include Types
   @apps = []
+  $urls = {}
 
   def self.app args={}, &blk
     args[:width] ||= 600
@@ -65,7 +66,7 @@ class Shoes
     app.canvas.set_style style
     app.win = win
 
-    app.instance_eval &blk if blk
+    blk ? app.instance_eval(&blk) : app.instance_eval(&$urls[/^#{'/'}$/])
 
     # FIXME: Have gir_ffi autocreate block arguments.
     Gtk.timeout_add 100, (Proc.new do
