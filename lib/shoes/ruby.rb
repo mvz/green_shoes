@@ -13,10 +13,12 @@ class Object
     dialog.set_transient_for app.win
     dialog.set_modal true
     dialog.add_button "gtk-ok", Gtk::ResponseType[:ok]
+
     # FIXME: Dynamically get class of returned widgets.
     area = Gtk::VBox.send :_real_new, dialog.get_content_area.to_ptr
     area.add Gtk::Label.new(msg)
 
+    dialog.set_has_separator false
     dialog.set_title "Shoes says:"
     dialog.show_all
 
