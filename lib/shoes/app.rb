@@ -282,7 +282,7 @@ class Shoes
       context.stroke
 
       img = create_tmp_png surface
-      img = Gtk::Image.new img.pixbuf.rotate(ROTATE[@pixbuf_rotate])
+      img = Gtk::Image.new_from_pixbuf img.get_pixbuf.rotate_simple(ROTATE[@pixbuf_rotate])
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
