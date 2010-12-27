@@ -71,7 +71,8 @@ class Shoes
 
     # FIXME: Have gir_ffi autocreate block arguments.
     Gtk.timeout_add 100, (Proc.new do
-      unless app.win.destroyed?
+      # FIXME: Provide a way to check destroyed status.
+      unless false # app.win.destroyed?
         if size_allocated? app
           call_back_procs app
           app.width_pre, app.height_pre = app.width, app.height
