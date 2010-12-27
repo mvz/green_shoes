@@ -37,8 +37,7 @@ class Shoes
     end
 
     GObject.signal_connect win, "destroy" do
-      Gtk.main_quit
-      File.delete TMP_PNG_FILE if File.exist? TMP_PNG_FILE
+      app.exit
     end if @apps.size == 1
 
     GObject.signal_connect(win, "button-press-event") do |w, e|
@@ -58,6 +57,8 @@ class Shoes
     GObject.signal_connect(win, "motion-notify-event") do
       app.mouse_pos = app.win.get_pointer
       mouse_motion_control app
+      mouse_hover_control app
+      mouse_leave_control app
     end
 
     # FIXME: #new should allow arguments to be left out (allow-null).
@@ -66,16 +67,19 @@ class Shoes
     app.canvas.set_style style
     app.win = win
 
-    blk ? app.instance_eval(&blk) : app.instance_eval(&$urls[/^#{'/'}$/])
+    blk ? app.instance_eval(&blk) : app.instance_eval{$urls[/^#{'/'}$/].call app}
 
     # FIXME: Have gir_ffi autocreate block arguments.
     Gtk.timeout_add 100, (Proc.new do
-      if size_allocated? app
-        call_back_procs app
-        app.width_pre, app.height_pre = app.width, app.height
+      unless app.win.destroyed?
+        if size_allocated? app
+          call_back_procs app
+          app.width_pre, app.height_pre = app.width, app.height
+        end
+        show_hide_control app
+        repaint_all_by_order app
+        set_cursor_type app
       end
-      show_hide_control app
-      set_cursor_type app
       true
     end), nil
 

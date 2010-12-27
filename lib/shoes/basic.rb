@@ -6,7 +6,7 @@ class Shoes
         instance_variable_set "@#{k}", v
       end
 
-      (@app.order << self) unless @noorder
+      (@app.order << self) unless @noorder or self.is_a?(EditBox) or self.is_a?(EditLine)
       (@app.cslot.contents << self) unless @nocontrol or @app.cmask
       (@app.cmask.contents << self) if @app.cmask
       @parent = @app.cslot
@@ -29,11 +29,11 @@ class Shoes
       @proc = nil
       [:app, :real].each{|k| args.delete k}
       @args = args
-      @hided, @shows = false, true
+      @hided, @shows, @hovered = false, true, false
     end
 
-    attr_reader :parent, :click_proc, :release_proc, :args, :shows
-    attr_accessor :hided
+    attr_reader :parent, :click_proc, :release_proc, :hover_proc, :leave_proc, :args, :shows
+    attr_accessor :hided, :hovered
 
     def move x, y
       @app.cslot.contents -= [self]
@@ -109,6 +109,16 @@ class Shoes
       @release_proc = blk
       @app.mrcs << self
     end
+
+    def hover &blk
+      @hover_proc = blk
+      (@app.mhcs << self) unless @app.mhcs.include? self
+    end
+
+    def leave &blk
+      @leave_proc = blk
+      (@app.mhcs << self) unless @app.mhcs.include? self
+    end
     
     def style args
       clear
@@ -128,6 +138,8 @@ class Shoes
       return if @hided
       clear if @real
       @left, @top, @width, @height = parent.left, parent.top, parent.width, parent.height
+      @width = @args[:width] unless @args[:width].zero?
+      @height = @args[:height] unless @args[:height].zero?
       m = self.class.to_s.downcase[7..-1]
       args = eval "{#{@args.keys.map{|k| "#{k}: @#{k}"}.join(', ')}}"
       args = [@pattern, args.merge({create_real: true, nocontrol: true})]
@@ -153,7 +165,7 @@ class Shoes
     end
 
     def text
-      @args[:markup]
+      @args[:markup].gsub(/\<.*?>/, '')
     end
     
     def text= s
@@ -163,7 +175,7 @@ class Shoes
       m = self.class.to_s.downcase[7..-1]
       args = [s, @args.merge({left: @left, top: @top, width: @width, height: @height, create_real: true, nocontrol: true})]
       tb = @app.send(m, *args)
-      @real, @height = tb.real, tb.height
+      @real, @height, @args[:markup] = tb.real, tb.height, tb.markup
     end
 
     alias :replace :text=
@@ -191,6 +203,10 @@ class Shoes
     def text
       @real.get_text
     end
+    
+    def text=(s)
+      @real.text = s
+    end
 
     def move2 x, y
       @app.canvas.move @real, x, y
@@ -201,6 +217,10 @@ class Shoes
   class EditBox < Basic
     def text
       @textview.buffer.text
+    end
+    
+    def text=(s)
+      @textview.buffer.text = s
     end
 
     def move2 x, y

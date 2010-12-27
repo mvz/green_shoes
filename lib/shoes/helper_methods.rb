@@ -15,8 +15,8 @@ class Shoes
   
   module Mod2
     def init_app_vars
-      @contents, @mccs, @mrcs, @mmcs, @mlcs, @shcs, @mcs, @order = 
-        [], [], [], [], [], [], [], []
+      @contents, @mccs, @mrcs, @mmcs, @mhcs, @mlcs, @shcs, @mcs, @order = 
+        [], [], [], [], [], [], [], [], [], []
       @cmask = nil
       @mouse_button, @mouse_pos = 0, [0, 0]
       @fill, @stroke = black, black
@@ -124,7 +124,6 @@ class Shoes
     app.cslot.width, app.cslot.height = app.width, app.height
     contents_alignment app.cslot
     repaint_all app.cslot
-    repaint_all_by_order app
     mask_control app
     true
   end
@@ -153,6 +152,24 @@ class Shoes
   def self.mouse_motion_control app
     app.mmcs.each do |blk|
       blk[*app.win.get_pointer]
+    end
+  end
+
+  def self.mouse_hover_control app
+    app.mhcs.each do |e|
+      if mouse_on?(e) and !e.hovered
+        e.hovered = true
+        e.hover_proc.call if e.hover_proc
+      end
+    end
+  end
+
+  def self.mouse_leave_control app
+    app.mhcs.each do |e|
+      if !mouse_on?(e) and e.hovered
+        e.hovered = false
+        e.leave_proc.call if e.leave_proc
+      end
     end
   end
 
@@ -261,7 +278,7 @@ class Shoes
       end
 
       context.mask pat
-      img = app.create_tmp_png surface
+      m.real = img = app.create_tmp_png(surface)
       app.canvas.put img, 0, 0
       img.show_now
     end

@@ -22,7 +22,7 @@ class Shoes
     end
 
     attr_accessor :cslot, :cmask, :top_slot, :contents, :canvas, :app, :mccs, :mrcs, :mmcs, 
-      :mlcs, :shcs, :mcs, :win, :width_pre, :height_pre, :order
+      :mhcs, :mlcs, :shcs, :mcs, :win, :width_pre, :height_pre, :order
     attr_writer :mouse_button, :mouse_pos
     attr_reader :link_style, :linkhover_style
 
@@ -47,6 +47,7 @@ class Shoes
     end
 
     def clear &blk
+      mcs.each &:clear
       @top_slot.clear &blk
     end
 
@@ -163,7 +164,6 @@ class Shoes
       el.set_width_chars args[:width] / 6
       GObject.signal_connect el, "changed" do
         yield el
-        self.win.set_focus el
       end if block_given?
       @canvas.put el, args[:left], args[:top]
       el.show_now
@@ -177,6 +177,7 @@ class Shoes
       args[:height] = 200 if args[:height].zero?
       tv = Gtk::TextView.new
       tv.wrap_mode = Gtk::TextTag::WRAP_WORD
+      tv.buffer.text = args[:text].to_s
 
       eb = Gtk::ScrolledWindow.new
       eb.set_size_request args[:width], args[:height]
@@ -478,8 +479,9 @@ class Shoes
     end
     
     def gradient pat, w, h, angle=0
+      pat = tr_color pat
       color = case pat
-        when Range; [pat.first, pat.last]
+        when Range; [tr_color(pat.first), tr_color(pat.last)]
         when Array; [pat, pat]
         when String
           sp = Cairo::SurfacePattern.new Cairo::ImageSurface.from_png(pat)
@@ -492,6 +494,16 @@ class Shoes
       lp.add_color_stop_rgba 0, *color[0]
       lp.add_color_stop_rgba 1, *color[1]
       lp
+    end
+
+    def tr_color pat
+      if pat.is_a?(String) and pat[0] == '#'
+        color = pat[1..-1]
+        color = color.gsub(/(.)/){$1 + '0'} if color.length == 3
+        rgb *color.gsub(/(..)/).map{$1.hex}
+      else
+        pat
+      end
     end
 
     def background pat, args={}
