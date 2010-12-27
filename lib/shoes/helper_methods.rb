@@ -108,12 +108,7 @@ class Shoes
   def self.repaint_all_by_order app
     app.order.each do |e|
       if e.real and !e.is_a?(Pattern) and !e.hided
-	before_type = GObject.type_from_instance(e.real)
         app.canvas.remove e.real
-	after_type = GObject.type_from_instance(e.real)
-	if before_type != after_type
-	  raise "Type change: (#{GObject.type_name(before_type)}) -> (#{GObject.type_name(after_type)})"
-	end
         app.canvas.put e.real, e.left, e.top
       end
     end
