@@ -623,11 +623,11 @@ class Shoes
     end
 
     def scroll_top
-      @swin.vscrollbar.value
+      @swin.get_vscrollbar.get_value
     end
 
     def scroll_top=(n)
-      @swin.vscrollbar.value = n
+      @swin.get_vscrollbar.set_value n
     end
 
     def clipboard
