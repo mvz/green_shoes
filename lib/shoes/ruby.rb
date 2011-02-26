@@ -41,8 +41,12 @@ class Object
   end
   
   def exit
-    Gtk.main_quit
+    (Shoes.APPS.length + 1).times{|i| timer(0.01*i){Gtk.main_quit}}
     File.delete Shoes::TMP_PNG_FILE if File.exist? Shoes::TMP_PNG_FILE
+  end
+
+  def to_s
+    super.gsub('<', '[').gsub('>', ']')
   end
 end
 
@@ -55,5 +59,26 @@ class String
       n += 1
     end
     links
+  end
+end
+
+class Array
+  def / len
+    a = []
+    each_with_index do |x, i|
+      a << [] if i % len == 0
+      a.last << x
+    end
+    a
+  end
+
+  def dark?
+    r, g, b = self
+    r + g + b < 0x55 * 3
+  end
+
+  def light?
+    r, g, b = self
+    r + g + b > 0xAA * 3
   end
 end

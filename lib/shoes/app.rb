@@ -7,28 +7,47 @@ class Shoes
       args.each do |k, v|
         instance_variable_set "@#{k}", v
       end
-      
+
+      win_title = @owner.instance_variable_get('@title')
+      class << @owner; self end.
+      class_eval do
+        define_method :to_s do
+          win_title or 'green shoes'
+        end
+      end if @owner
+
       App.class_eval do
         attr_accessor *(args.keys - [:width, :height, :title])
       end
       
       init_app_vars
-      @canvas, @win = nil, nil
+      @canvas, @win, @swin, @top_slot = nil
       @cslot = (@app ||= self)
-      @top_slot = nil
       @width_pre, @height_pre = @width, @height
       @link_style, @linkhover_style = LINK_DEFAULT, LINKHOVER_DEFAULT
       @context_angle = @pixbuf_rotate = 0
+      Shoes.APPS << self
     end
 
     attr_accessor :cslot, :cmask, :top_slot, :contents, :canvas, :app, :mccs, :mrcs, :mmcs, 
-      :mhcs, :mlcs, :shcs, :mcs, :win, :width_pre, :height_pre, :order
+      :mhcs, :mlcs, :shcs, :mcs, :win, :swin, :width_pre, :height_pre, :order, :dics
     attr_writer :mouse_button, :mouse_pos
-    attr_reader :link_style, :linkhover_style
+    attr_reader :link_style, :linkhover_style, :animates, :owner
 
     def visit url
-      $urls.each do |k, v|
-        clear{init_app_vars; v.call self, $1} if k =~ url
+      if url =~ /^(http|https):\/\//
+        Thread.new do
+          case RUBY_PLATFORM
+          when /mingw/; system "start #{url}"
+          when /linux/; system("/etc/alternatives/x-www-browser #{url} &")
+          else
+            puts "Sorry, your platform [#{RUBY_PLATFORM}] is not supported..."
+          end
+        end
+      else
+        timer 0.001 do
+          $urls.each{|k, v| clear{init_app_vars; v.call self, $1} if k =~ url}
+        end
       end
     end
     
@@ -51,28 +70,15 @@ class Shoes
       @top_slot.clear &blk
     end
 
-    def style klass, args={}
-      if klass == Shoes::Link
-          @link_style = LINK_DEFAULT
-          @link_style.sub!('single', 'none') if args[:underline] == false
-          @link_style.sub!("foreground='#06E'", "foreground='#{args[:stroke]}'") if args[:stroke]
-          @link_style.sub!('>', " background='#{args[:fill]}'>") if args[:fill]
-          @link_style.sub!('normal', "#{args[:weight]}") if args[:weight]
-      elsif klass == Shoes::LinkHover
-          @linkhover_style = LINKHOVER_DEFAULT
-          @linkhover_style.sub!('single', 'none') if args[:underline] == false
-          @linkhover_style.sub!("foreground='#039'", "foreground='#{args[:stroke]}'") if args[:stroke]
-          @linkhover_style.sub!('>', " background='#{args[:fill]}'>") if args[:fill]
-          @linkhover_style.sub!('normal', "#{args[:weight]}") if args[:weight]
-      end
-    end
-
     def textblock klass, font_size, *msg
       args = msg.last.class == Hash ? msg.pop : {}
       args = basic_attributes args
       args[:markup] = msg.map(&:to_s).join
-      attr_list, text = Pango.parse_markup args[:markup]
+      attr_list, dummy_text = Pango.parse_markup args[:markup].gsub('\u0026', '@')
+      dummy_attr_list, text = Pango.parse_markup args[:markup]
+      text = text.gsub('\u0026', '&')
       args[:size] ||= font_size
+      args[:font] ||= (@font_family or 'sans')
       args[:align] ||= 'left'
       line_height =  args[:size] * 2
       
@@ -86,6 +92,7 @@ class Shoes
       end
       
       if args[:create_real] or !layout_control
+        args[:width] = 1 if args[:width] <= 0
         surface = Cairo::ImageSurface.new Cairo::FORMAT_ARGB32, args[:width], args[:height]
         context = Cairo::Context.new surface
         layout = context.create_pango_layout
@@ -94,7 +101,8 @@ class Shoes
         layout.spacing = 5  * Pango::SCALE
         layout.text = text
         layout.alignment = eval "Pango::ALIGN_#{args[:align].upcase}"
-        fd = Pango::FontDescription.new 'sans'
+        fd = Pango::FontDescription.new
+        fd.family = args[:font]
         fd.size = args[:size] * Pango::SCALE
         layout.font_description = fd
         layout.attributes = attr_list
@@ -126,8 +134,16 @@ class Shoes
 
     def image name, args={}
       args = basic_attributes args
-      img = Gtk::Image.new_from_file name
-      unless args[:width].zero? and args[:height].zero?
+      if name =~ /^(http|https):\/\//
+        tmpname = File.join(Dir.tmpdir, "__green_shoes_#{Time.now.to_f}.png")
+        d = download name, save: tmpname
+        img = Gtk::Image.new File.join(DIR, '../static/downloading.png')
+        downloading = true
+      else
+        img = Gtk::Image.new_from_file name
+        downloading = false
+      end
+      if (!args[:width].zero? or !args[:height].zero?) and !downloading 
         w, h = imagesize(name)
         args[:width] = w if args[:width].zero?
         args[:height] = w if args[:height].zero?
@@ -136,7 +152,7 @@ class Shoes
       @canvas.put img, args[:left], args[:top]
       img.show_now
       args[:real], args[:app] = img, self
-      Image.new args
+      Image.new(args).tap{|s| @dics.push([s, d, tmpname]) if downloading}
     end
 
     def imagesize name
@@ -149,11 +165,37 @@ class Shoes
     def button name, args={}, &blk
       args = basic_attributes args
       b = Gtk::Button.new_with_label name
+      b.set_size_request args[:width], args[:height] if args[:width] > 0 and args[:height] > 0
       GObject.signal_connect b, "clicked", &blk if blk
       @canvas.put b, args[:left], args[:top]
       b.show_now
       args[:real], args[:text], args[:app] = b, name, self
       Button.new args
+    end
+
+    def check args={}, &blk
+      args = basic_attributes args
+      cb = Gtk::CheckButton.new
+      cb.active = true if args[:checked]
+      cb.signal_connect "clicked", &blk if blk
+      @canvas.put cb, args[:left], args[:top]
+      cb.show_now
+      args[:real], args[:app] = cb, self
+      Check.new args
+    end
+    
+    def radio *attrs, &blk
+      args = attrs.last.class == Hash ? attrs.pop : {}
+      group = attrs.first unless attrs.empty?
+      group = group ? (@radio_groups[group] ||= Gtk::RadioButton.new) : cslot.radio_group
+      args = basic_attributes args
+      rb = Gtk::RadioButton.new group
+      rb.active = true if args[:checked]
+      rb.signal_connect "clicked", &blk if blk
+      @canvas.put rb, args[:left], args[:top]
+      rb.show_now
+      args[:real], args[:app] = rb, self
+      Radio.new args
     end
 
     def edit_line args={}
@@ -211,12 +253,15 @@ class Shoes
       ListBox.new args
     end
 
-    def animate n=10, &blk
+    def animate n=10, repaint=true, &blk
       n, i = 1000 / n, 0
       a = Anim.new
+      @animates << a
       GLib::Timeout.add n do
-        blk[i = a.pause? ? i : i+1]
-        Shoes.repaint_all_by_order self
+        if a.continue? 
+          blk[i = a.pause? ? i : i+1]
+          Shoes.repaint_all_by_order self if repaint
+        end
         a.continue?
       end
       a
@@ -427,7 +472,9 @@ class Shoes
       klass.new args
     end
 
-    def shape args, &blk
+    def shape args={}, &blk
+      args[:left] ||= 0
+      args[:top] ||= 0
       args[:block] = blk
       shapebase Shape, args
     end
@@ -511,6 +558,7 @@ class Shoes
       args = basic_attributes args
 
       if args[:create_real] and !args[:height].zero?
+        args[:width] = 1 if args[:width] <= 0
         surface = Cairo::ImageSurface.new Cairo::FORMAT_ARGB32, args[:width], args[:height]
         context = Cairo::Context.new surface
         context.rounded_rectangle 0, 0, args[:width], args[:height], args[:curve]
@@ -553,6 +601,57 @@ class Shoes
 
       args[:app] = self
       Border.new args
+    end
+
+    def progress args={}
+      args = basic_attributes args
+      args[:width] = 150 if args[:width] < 150
+      pb = Gtk::ProgressBar.new
+      pb.text = ' ' * (args[:width] / 4 - 2)
+      @canvas.put pb, args[:left], args[:top]
+      pb.show_now
+      args[:real], args[:app], args[:noorder], args[:nocontrol] = pb, self, true, true
+      Progress.new args
+    end
+
+    def download name, args={}, &blk
+      Download.new name, args, &blk
+    end
+
+    def nolayout
+      @nolayout = true
+    end
+
+    def scroll_top
+      @swin.vscrollbar.value
+    end
+
+    def scroll_top=(n)
+      @swin.vscrollbar.value = n
+    end
+
+    def clipboard
+      Gtk::Clipboard.get(Gdk::Selection::CLIPBOARD).wait_for_text
+    end
+
+    def clipboard=(str)
+      Gtk::Clipboard.get(Gdk::Selection::CLIPBOARD).text = str
+    end
+
+    def close
+      win.destroy
+      Gtk.main_quit
+      Shoes.APPS.delete app
+      exit if Shoes.APPS.empty?
+    end
+
+    def window args={}, &blk
+      args.merge! owner: self
+      Shoes.app args, &blk
+    end
+
+    def flush
+      Shoes.call_back_procs self
     end
   end
 end

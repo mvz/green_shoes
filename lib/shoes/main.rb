@@ -2,6 +2,9 @@ class Shoes
   include Types
   @apps = []
   $urls = {}
+  APPS = []
+
+  def self.APPS; APPS end
 
   def self.app args={}, &blk
     args[:width] ||= 600
@@ -9,6 +12,8 @@ class Shoes
     args[:title] ||= 'green shoes'
     args[:left] ||= 0
     args[:top] ||= 0
+    projector = args[:prjct] = args[:projector]
+    args.delete :projector
 
     app = App.new args
     @apps.push app
@@ -33,11 +38,12 @@ class Shoes
     win.set_events Gdk::EventMask[:button_press_mask] | Gdk::EventMask[:button_release_mask] | Gdk::EventMask[:pointer_motion_mask]
 
     GObject.signal_connect(win, "delete-event") do
+      app.animates.each &:stop
       false
     end
 
     GObject.signal_connect win, "destroy" do
-      app.exit
+      app.close
     end if @apps.size == 1
 
     GObject.signal_connect(win, "button-press-event") do |w, e|
@@ -62,23 +68,33 @@ class Shoes
     end
 
     # FIXME: #new should allow arguments to be left out (allow-null).
-    app.canvas = Gtk::Layout.new nil, nil
-    win.add app.canvas
+    app.canvas = projector ? Gtk::DrawingArea.new : Gtk::Layout.new nil, nil
+    swin = Gtk::ScrolledWindow.new
+    swin.set_policy Gtk::POLICY_NEVER, Gtk::POLICY_AUTOMATIC 
+    swin.vadjustment.step_increment = 10  
+    swin.add app.canvas
+    win.add swin
     app.canvas.set_style style
-    app.win = win
+    app.win, app.swin = win, swin
 
-    blk ? app.instance_eval(&blk) : app.instance_eval{$urls[/^#{'/'}$/].call app}
+    if blk
+      app.instance_eval &blk
+    elsif projector
+      app.send :projector, projector
+    else
+      app.instance_eval{$urls[/^#{'/'}$/].call app}
+    end
 
     # FIXME: Have gir_ffi autocreate block arguments.
     Gtk.timeout_add 100, (Proc.new do
       # FIXME: Provide a way to check destroyed status.
       unless false # app.win.destroyed?
+        download_images_control app
         if size_allocated? app
           call_back_procs app
           app.width_pre, app.height_pre = app.width, app.height
         end
         show_hide_control app
-        repaint_all_by_order app
         set_cursor_type app
       end
       true

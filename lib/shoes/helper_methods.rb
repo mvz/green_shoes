@@ -10,13 +10,34 @@ class Shoes
       @margin_bottom ||= margin_bottom
     end
 
-    attr_reader :margin_left, :margin_top, :margin_right, :margin_bottom
+    def click &blk
+      @click_proc = blk
+      @app.mccs << self
+    end
+    
+    def release &blk
+      @release_proc = blk
+      @app.mrcs << self
+    end
+
+    def hover &blk
+      @hover_proc = blk
+      (@app.mhcs << self) unless @app.mhcs.include? self
+    end
+
+    def leave &blk
+      @leave_proc = blk
+      (@app.mhcs << self) unless @app.mhcs.include? self
+    end
+
+    attr_reader :margin_left, :margin_top, :margin_right, :margin_bottom, :click_proc, :release_proc, :hover_proc, :leave_proc
+    attr_accessor :hovered
   end
   
   module Mod2
     def init_app_vars
-      @contents, @mccs, @mrcs, @mmcs, @mhcs, @mlcs, @shcs, @mcs, @order = 
-        [], [], [], [], [], [], [], [], [], []
+      @contents, @mccs, @mrcs, @mmcs, @mhcs, @mlcs, @shcs, @mcs, @order, @dics, @animates, @radio_groups = 
+        [], [], [], [], [], [], [], [], [], [], [], {}
       @cmask = nil
       @mouse_button, @mouse_pos = 0, [0, 0]
       @fill, @stroke = black, black
@@ -42,6 +63,7 @@ class Shoes
   class App
     def basic_attributes args={}
       default = {left: 0, top: 0, width: 0, height: 0, angle: 0, curve: 0}
+      default.merge!({nocontrol: true}) if @nolayout
       default.merge args
     end
 
@@ -117,9 +139,11 @@ class Shoes
   def self.call_back_procs app
     init_contents app.cslot.contents
     app.cslot.width, app.cslot.height = app.width, app.height
-    contents_alignment app.cslot
+    scrollable_height = contents_alignment app.cslot
     repaint_all app.cslot
     mask_control app
+    repaint_all_by_order app
+    app.canvas.set_size 0, scrollable_height unless app.prjct
     true
   end
 
@@ -134,13 +158,13 @@ class Shoes
 
   def self.mouse_click_control app
     app.mccs.each do |e|
-      e.click_proc.call if mouse_on? e
+      e.click_proc[*app.mouse] if mouse_on? e
     end
   end
   
   def self.mouse_release_control app
     app.mrcs.each do |e|
-      e.release_proc.call if mouse_on? e
+      e.release_proc[*app.mouse] if mouse_on? e
     end
   end
 
@@ -154,7 +178,7 @@ class Shoes
     app.mhcs.each do |e|
       if mouse_on?(e) and !e.hovered
         e.hovered = true
-        e.hover_proc.call if e.hover_proc
+        e.hover_proc[e] if e.hover_proc
       end
     end
   end
@@ -163,7 +187,7 @@ class Shoes
     app.mhcs.each do |e|
       if !mouse_on?(e) and e.hovered
         e.hovered = false
-        e.leave_proc.call if e.leave_proc
+        e.leave_proc[e] if e.leave_proc
       end
     end
   end
@@ -177,6 +201,7 @@ class Shoes
   
   def self.set_cursor_type app
     app.mccs.each do |e|
+      next if e.is_a? Slot
       e.real.get_window.set_cursor ARROW if e.real.get_window
       (e.real.get_window.set_cursor HAND; return) if mouse_on? e
     end
@@ -204,19 +229,22 @@ class Shoes
   end
   
   def self.mouse_on? e
-    mouse_x, mouse_y = e.real.get_pointer
-    (0..e.width).include?(mouse_x) and (0..e.height).include?(mouse_y)
+    if e.is_a? Slot
+      mouse_x, mouse_y = e.app.win.pointer
+      (e.left..e.left+e.width).include?(mouse_x) and (e.top..e.top+e.height).include?(mouse_y)
+    else
+      mouse_x, mouse_y = e.real.get_pointer
+      (0..e.width).include?(mouse_x) and (0..e.height).include?(mouse_y)
+    end
   end
 
   def self.mouse_on_link tb, app
     mouse_x, mouse_y = app.win.get_pointer
+    mouse_y += app.scroll_top
     mouse_x -= tb.left
     mouse_y -= tb.top
     tb.links.each_with_index do |e, n|
-      return [e.link_proc, n] if ((0..tb.width).include?(mouse_x) and (e.pos[1]..(e.pos[3]+e.pos[4])).include?(mouse_y) \
-        and !((0..e.pos[0]).include?(mouse_x) and (e.pos[1]..(e.pos[1]+e.pos[4])).include?(mouse_y)) \
-        and !((e.pos[2]..tb.width).include?(mouse_x) and (e.pos[3]..(e.pos[3]+e.pos[4])).include?(mouse_y)) \
-      )
+      return [e.link_proc, n] if ((0..tb.width).include?(mouse_x) and (e.pos[1]..(e.pos[3]+e.pos[4])).include?(mouse_y) and !((0..e.pos[0]).include?(mouse_x) and (e.pos[1]..(e.pos[1]+e.pos[4])).include?(mouse_y)) and !((e.pos[2]..tb.width).include?(mouse_x) and (e.pos[3]..(e.pos[3]+e.pos[4])).include?(mouse_y)))
     end
     return false
   end
@@ -226,17 +254,21 @@ class Shoes
   end
 
   def self.show_hide_control app
+    flag = false
     app.shcs.each do |e|
       case
         when(!e.shows and !e.hided)
           e.remove
           e.hided = true
+          flag = true
         when(e.shows and e.hided)
           e.hided = false
           e.is_a?(Pattern) ? e.move2(e.left, e.top) : app.canvas.put(e.real, e.left, e.top)
+          flag = true
         else
       end
     end
+    repaint_all_by_order app if flag
   end
 
   def self.mask_control app
@@ -276,6 +308,25 @@ class Shoes
       m.real = img = app.create_tmp_png(surface)
       app.canvas.put img, 0, 0
       img.show_now
+    end
+  end
+
+  def self.download_images_control app
+    app.dics.each do |e, d, tmpname|
+      args = e.args
+      if d.finished?
+        app.canvas.remove e.real
+        img = Gtk::Image.new tmpname
+        unless args[:width].zero? and args[:height].zero?
+          img = Gtk::Image.new img.pixbuf.scale(args[:width], args[:height])
+        end
+        app.canvas.put img, e.left, e.top
+        img.show_now
+        e.real = img
+        e.width, e.height = img.size_request
+        app.dics.delete [e, d, tmpname]
+        File.delete tmpname
+      end
     end
   end
 end

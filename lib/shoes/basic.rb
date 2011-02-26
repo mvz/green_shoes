@@ -2,6 +2,7 @@ class Shoes
   class Basic
     include Mod
     def initialize args
+      @initials = args
       args.each do |k, v|
         instance_variable_set "@#{k}", v
       end
@@ -32,8 +33,8 @@ class Shoes
       @hided, @shows, @hovered = false, true, false
     end
 
-    attr_reader :parent, :click_proc, :release_proc, :hover_proc, :leave_proc, :args, :shows
-    attr_accessor :hided, :hovered
+    attr_reader :parent,  :args, :shows, :initials
+    attr_accessor :hided
 
     def move x, y
       @app.cslot.contents -= [self]
@@ -100,38 +101,51 @@ class Shoes
       max
     end
 
-    def click &blk
-      @click_proc = blk
-      @app.mccs << self
-    end
-    
-    def release &blk
-      @release_proc = blk
-      @app.mrcs << self
-    end
-
-    def hover &blk
-      @hover_proc = blk
-      (@app.mhcs << self) unless @app.mhcs.include? self
-    end
-
-    def leave &blk
-      @leave_proc = blk
-      (@app.mhcs << self) unless @app.mhcs.include? self
-    end
-    
-    def style args
-      clear
-      @args[:nocontrol] = @args[:noorder] = true
-      m = self.class.to_s.downcase[7..-1]
-      args = @args.merge args
-      blk = args[:block]
-      @real = @app.send(m, args, &blk).real
+    def fix_size
+      flag = false
+      set_margin
+      case self
+      when EditBox, Button
+        if 0 < @initials[:width] and @initials[:width] <= 1.0
+          @width = @parent.width * @initials[:width] - @margin_left - @margin_right
+          flag = true
+        end
+        if 0 < @initials[:height] and @initials[:height] <= 1.0
+          @height = @parent.height * @initials[:height] - @margin_top - @margin_bottom
+          flag = true
+        end
+      when EditLine, ListBox
+        if 0 < @initials[:width] and @initials[:width] <= 1.0
+          @width = @parent.width * @initials[:width] - @margin_left - @margin_right
+          @height = 26
+          flag = true
+        end
+      else
+      end
+      if flag
+        @real.set_size_request @width, @height
+        move @left, @top
+      end
     end
   end
 
   class Image < Basic; end
-  class Button < Basic; end
+  class Button < Basic
+    def click &blk
+      real.signal_connect "clicked", &blk if blk
+    end
+  end
+  class ToggleButton < Button
+    def checked?
+      real.active?
+    end
+    
+    def checked=(tof)
+      real.active = tof
+    end
+  end
+  class Check < ToggleButton; end
+  class Radio < ToggleButton; end
 
   class Pattern < Basic
     def move2 x, y
@@ -169,13 +183,7 @@ class Shoes
     end
     
     def text= s
-      clear if @real
-      @width = (@left + parent.width <= @app.width) ? parent.width : @app.width - @left
-      @height = 20 if @height.zero?
-      m = self.class.to_s.downcase[7..-1]
-      args = [s, @args.merge({left: @left, top: @top, width: @width, height: @height, create_real: true, nocontrol: true})]
-      tb = @app.send(m, *args)
-      @real, @height, @args[:markup] = tb.real, tb.height, tb.markup
+      style markup: s
     end
 
     alias :replace :text=
@@ -232,6 +240,16 @@ class Shoes
   class ListBox < Basic
     def text
       @items[@real.get_active]
+    end
+  end
+
+  class Progress < Basic
+    def fraction
+      real.fraction
+    end
+
+    def fraction= n
+      real.fraction = n
     end
   end
 end

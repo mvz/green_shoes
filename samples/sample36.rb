@@ -19,10 +19,11 @@ class Book < Shoes
         link(title){visit "/incidents/#{i}"},
         " / "
     end
-    toc[0...-1] << "\n"*3
+    toc[0...-1] << "\n"*5
   end
 
   def incident num
+    self.scroll_top = 0
     num = num.to_i
     stack  margin_left: 190 do
       banner "Incident"
@@ -34,7 +35,7 @@ class Book < Shoes
         para *table_of_contents, size: 8
       end
 
-      stack width: 460, margin_left: 10 do
+      stack width: -180, margin_left: 10 do
         INCIDENTS[num][1].split(/\n\n+/).each do |p|
           para p
         end
