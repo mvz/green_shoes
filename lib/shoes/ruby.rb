@@ -14,8 +14,7 @@ class Object
     dialog.set_modal true
     dialog.add_button "gtk-ok", Gtk::ResponseType[:ok]
 
-    # FIXME: Dynamically get class of returned widgets.
-    area = Gtk::VBox.send :_real_new, dialog.get_content_area.to_ptr
+    area = dialog.get_content_area
     area.add Gtk::Label.new(msg)
 
     dialog.set_has_separator false
