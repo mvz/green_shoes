@@ -68,7 +68,7 @@ class Shoes
     end
 
     # FIXME: #new should allow arguments to be left out (allow-null).
-    app.canvas = projector ? Gtk::DrawingArea.new : Gtk::Layout.new nil, nil
+    app.canvas = projector ? Gtk::DrawingArea.new : Gtk::Layout.new(nil, nil)
     swin = Gtk::ScrolledWindow.new
     swin.set_policy Gtk::POLICY_NEVER, Gtk::POLICY_AUTOMATIC 
     swin.vadjustment.step_increment = 10  
