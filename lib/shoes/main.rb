@@ -82,7 +82,7 @@ class Shoes
     elsif projector
       app.send :projector, projector
     else
-      app.instance_eval{$urls[/^#{'/'}$/].call app}
+      app.instance_eval{$urls[/^#{'/'}$/].call app} #'
     end
 
     # FIXME: Have gir_ffi autocreate block arguments.
