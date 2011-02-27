@@ -640,6 +640,7 @@ class Shoes
 
     def close
       win.destroy
+      win = nil
       Gtk.main_quit
       Shoes.APPS.delete app
       exit if Shoes.APPS.empty?
